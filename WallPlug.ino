@@ -225,7 +225,7 @@ void loop() {
        delay(5000);  // wait 5 seconds
        retries--;
        if (retries == 0) {
-         wifiManager.startConfigPortal("ConfigAP");
+//         wifiManager.startConfigPortal("ConfigAP");
          ESP.reset();
        }
     }
