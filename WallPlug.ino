@@ -5,6 +5,9 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 #include <Ticker.h>
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson 
 
@@ -157,6 +160,30 @@ void setup() {
   //LED off
   digitalWrite(LED, LOW);
 
+  // OTA
+  // An important note: make sure that your project setting of Flash size is at least double of size of the compiled program. Otherwise OTA fails on out-of-memory.
+  ArduinoOTA.setPassword((const char *)"password");
+  ArduinoOTA.onStart([]() {
+    Serial.println("OTA: Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nOTA: End");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("OTA progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    char errormsg[100];
+    sprintf(errormsg, "OTA: Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) strcpy(errormsg+strlen(errormsg), "Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) strcpy(errormsg+strlen(errormsg), "Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) strcpy(errormsg+strlen(errormsg), "Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) strcpy(errormsg+strlen(errormsg), "Receive Failed");
+    else if (error == OTA_END_ERROR) strcpy(errormsg+strlen(errormsg), "End Failed");
+    Serial.println(errormsg);
+  });
+  ArduinoOTA.begin();
+
   //read updated parameters
   strcpy(mqtt_server, custom_mqtt_server.getValue());
   strcpy(mqtt_port, custom_mqtt_port.getValue());
@@ -221,6 +248,7 @@ void loop() {
     while ((ret = mqtt->connect()) != 0) { // connect will return 0 for connected
        Serial.println(mqtt->connectErrorString(ret));
        Serial.println("Retrying MQTT connection in 5 seconds...");
+       ArduinoOTA.handle(); // to be able to update even without MQTT
        mqtt->disconnect();
        delay(5000);  // wait 5 seconds
        retries--;
@@ -232,6 +260,8 @@ void loop() {
     Serial.println("MQTT Connected!");
     mqtt_status->publish("connected");
   }
+
+  ArduinoOTA.handle();
 
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt->readSubscription(5000))) {
