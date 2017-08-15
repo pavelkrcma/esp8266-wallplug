@@ -143,6 +143,7 @@ void setup() {
   wifiManager.addParameter(&custom_mqtt_username);
   wifiManager.addParameter(&custom_mqtt_password);
 
+  wifiManager.setConfigPortalTimeout(300); // wait 5 minutes for Wifi config and then return
   if (!wifiManager.autoConnect()) {
     Serial.println("failed to connect and hit timeout");
     ESP.reset();
@@ -243,14 +244,14 @@ void setup() {
 void loop() {
   if (!mqtt->connected()) {
     Serial.print("Connecting to MQTT... ");
-    uint8_t retries = 3;
+    uint8_t retries = 10;
     int8_t ret;
     while ((ret = mqtt->connect()) != 0) { // connect will return 0 for connected
        Serial.println(mqtt->connectErrorString(ret));
        Serial.println("Retrying MQTT connection in 5 seconds...");
        ArduinoOTA.handle(); // to be able to update even without MQTT
        mqtt->disconnect();
-       delay(5000);  // wait 5 seconds
+       delay(30000);  // wait 30 seconds
        retries--;
        if (retries == 0) {
 //         wifiManager.startConfigPortal("ConfigAP");
